@@ -1,80 +1,88 @@
-# sp500-forecasting-ml
-# 📈 S&P 500 Price Movement Prediction using Machine Learning
+# S&P 500 Next-Day Direction: Can Simple Technical Indicators Beat a Naive Baseline?
 
-An end-to-end Machine Learning project that predicts the **daily price movement direction** of the S&P 500 index using a Random Forest Classifier and technical indicators, including a backtesting simulation to evaluate the strategy's performance.
+A machine learning project that tests whether a Random Forest, trained on simple technical indicators, can predict the next-day direction of the S&P 500 better than a naive "always up" baseline.
 
----
+**Main finding:** it cannot. On this data, the model does not beat the baseline in accuracy, precision, Sharpe ratio or drawdown. The project is built to reach that conclusion rigorously, without data leakage and with realistic evaluation.
 
-## 🎯 Objective
+## Question
 
-Predict whether the S&P 500 closing price will go **up (1)** or **down (0)** the next day, using 10 years of historical data (2014–2024).
+Can a Random Forest using price-based indicators predict whether the S&P 500 closes higher tomorrow, and does trading on those predictions beat buy & hold?
 
----
+## Data
 
-## 🔧 Tech Stack
+- S&P 500 index (`^GSPC`), daily prices from 2014-01-01 to 2024-12-31, downloaded with `yfinance`.
+- 2,566 usable trading days after removing the rows lost to rolling windows (2,052 for training and 514 for testing).
 
-| Tool | Purpose |
-|---|---|
-| `Python 3.12` | Core language |
-| `yfinance` | Historical market data retrieval |
-| `pandas` & `numpy` | Data manipulation |
-| `scikit-learn` | Random Forest model & evaluation |
-| `matplotlib` & `seaborn` | Data visualization |
+## Method
 
----
+**Target.** 1 if tomorrow's close is higher than today's close, 0 otherwise.
 
-## 📊 Features Used
+**Features.** All features are scale-free (returns and ratios rather than raw prices), because a Random Forest cannot extrapolate beyond the price levels seen in training:
 
 | Feature | Description |
 |---|---|
-| `MA50` | 50-day Moving Average |
-| `MA200` | 200-day Moving Average |
-| `RSI` | Relative Strength Index (14 periods) |
-| `Daily_Return` | Daily percentage price change |
-| `Volatility` | 10-day rolling standard deviation |
-| `Volume_Change` | Percentage change in trading volume |
-| `HL_Range` | High-Low daily price spread |
+| `Daily_Return` | Percentage change of the close |
+| `RSI` | 14-day Relative Strength Index |
+| `Volatility` | Standard deviation of daily returns over 10 days |
+| `Volume_Change` | Percentage change of volume |
+| `HL_Range` | (High - Low) / Close |
+| `Close_vs_MA50` | Close / 50-day moving average - 1 |
+| `Close_vs_MA200` | Close / 200-day moving average - 1 |
 
----
+**Validation.**
+- Chronological 80/20 split (no shuffling, to avoid look-ahead bias).
+- Walk-forward validation with `TimeSeriesSplit` (5 folds), always training on the past and testing on the following block.
 
-## 🧠 Methodology
+**Model.** `RandomForestClassifier(n_estimators=200, min_samples_split=100, random_state=1)`.
 
-1. **Data Collection** — 10 years of S&P 500 data via `yfinance`
-2. **Feature Engineering** — Technical indicators calculated from raw OHLCV data
-3. **Target Labeling** — Binary classification: `1` if next day's price > today's, `0` otherwise
-4. **Chronological Split** — 80% training / 20% testing (no data leakage)
-5. **Model** — `RandomForestClassifier` with 200 estimators
-6. **Backtesting** — Simulated trading strategy vs. Buy & Hold benchmark
+**Baseline.** Always predicting "up". Since the S&P 500 rises on most days, this baseline is hard to beat and is the right reference for accuracy and precision.
 
----
+**Backtest.** Long/cash strategy: hold the index the day after an "up" prediction, stay in cash otherwise. The prediction made on day *t* is applied to the return of day *t+1*. Transaction costs of 0.1% are charged at every position change. Sharpe ratios are annualised with 252 trading days and a risk-free rate of 0.
 
-## 📈 Results
+## Results (test period, roughly the last two years of the sample)
 
-- **Model Accuracy:** ~55%
-- **Precision on 'UP' signals:** ~55%
-- **Key insight:** In quantitative finance, a consistent 5% edge over random chance is considered highly significant
+| Metric | Model | Baseline / Buy & hold |
+|---|---|---|
+| Accuracy | 52.92% | 55.45% (always up) |
+| Precision (on "up") | 55.26% | 55.45% (always up) |
+| Walk-forward accuracy (mean of 5 folds) | 51.85% | 54.47% (always up) |
+| Sharpe ratio, no costs | 1.17 | 1.60 |
+| Sharpe ratio, after costs | 0.54 | 1.60 |
+| Max drawdown, no costs | -11.18% | -10.28% |
+| Max drawdown, after costs | -11.71% | -10.28% |
+| Growth of 1 unit, no costs | 1.32 | 1.50 |
+| Growth of 1 unit, after costs | 1.13 | 1.50 |
+| Position changes | 159 | 0 |
 
-> While the strategy underperformed the Buy & Hold benchmark in cumulative returns, the model demonstrated a meaningful precision edge on bullish signals — avoiding some of the downside risk in exchange for missing recovery rallies.
+## Conclusion
 
----
+- The model is less accurate than always predicting "up", and its precision is practically the same as the baseline, so its "up" signals carry no extra information.
+- Walk-forward validation gives the same picture, so the result does not depend on one particular split.
+- The strategy has a lower Sharpe ratio than buy & hold, and costs reduce it further (1.17 to 0.54). It did not reduce the maximum drawdown either.
+- Next-day direction from simple price indicators is very close to noise, and the strong upward drift of the index makes staying in cash costly.
 
-## 🚀 Future Improvements
+## Limitations
 
-- Sentiment Analysis (NLP) from financial news headlines
-- Hyperparameter tuning with Optuna
-- Macroeconomic indicators (interest rates, inflation)
-- Ensemble models (XGBoost, LightGBM)
+- One index and one time period.
+- A single set of hyperparameters, not tuned.
+- Simplified cost model (0.1% per position change), with no slippage or taxes.
+- The test period is about two years, so the estimates have wide uncertainty.
 
----
+## Possible next steps
 
-## 📁 Project Structure
+- Add macroeconomic variables and test other models.
+- Predict returns over several days instead of the next day.
+- Tune hyperparameters inside a walk-forward scheme.
+- Evaluate on other assets and periods.
 
-```
-sp500-forecasting-ml/
-│
-└── s-p-500-price-prediction.ipynb   # Full notebook: EDA, feature engineering, model, backtesting
-```
+## Repository
 
+- `s-p-500-price-prediction.ipynb`: the full analysis (run top to bottom).
+- `LICENSE`: Apache-2.0.
+
+## How to run
+
+Open the notebook in Google Colab and run all cells (`Runtime > Run all`). Requirements: `numpy`, `pandas`, `matplotlib`, `seaborn`, `scikit-learn`, `yfinance`.
 ---
 
 ## 👤 Author
