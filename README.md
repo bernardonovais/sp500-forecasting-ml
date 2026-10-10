@@ -39,7 +39,7 @@ Can a Random Forest using price-based indicators predict whether the S&P 500 clo
 
 **Backtest.** Long/cash strategy: hold the index the day after an "up" prediction, stay in cash otherwise. The prediction made on day *t* is applied to the return of day *t+1*. Transaction costs of 0.1% are charged at every position change. Sharpe ratios are annualised with 252 trading days and a risk-free rate of 0.
 
-## Results (test period, roughly the last two years of the sample)
+## Results (test period: 2022-12-09 to 2024-12-27)
 
 | Metric | Model | Baseline / Buy & hold |
 |---|---|---|
@@ -66,7 +66,8 @@ Can a Random Forest using price-based indicators predict whether the S&P 500 clo
 - One index and one time period.
 - A single set of hyperparameters, not tuned.
 - Simplified cost model (0.1% per position change), with no slippage or taxes.
-- The test period is about two years, so the estimates have wide uncertainty.
+- The test period covers only about two years (514 trading days), so the estimates have wide uncertainty.
+- That period was a strong bull market for the S&P 500, which favours buy & hold; results could differ in other market regimes.
 
 ## Possible next steps
 
